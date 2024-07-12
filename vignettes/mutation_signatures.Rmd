@@ -173,14 +173,17 @@ only those signatures with non-zero 95% credibility intervals for exposure in a
 sample are included. As a result, a fraction of the sample's signature 
 exposure is left unexplained, as we can't have confidence that the other signatures 
 truly contribute to that sample. 
-
-```{r extractmulti, fig.width=8, fig.height=5, fig.keep="all"}
+```{r}
 mut_example_multi <- hdp_extract_components(mut_example_multi)
 mut_example_multi
+```
 
+```{r}
 par(mfrow=c(1,1), mar=c(5, 4, 4, 2))
 plot_comp_size(mut_example_multi, bty="L")
+```
 
+```{r}
 trinuc_context <- sapply(strsplit(colnames(mut_count), '\\.'), `[`, 4)
 group_factor <- as.factor(rep(c("C>A", "C>G", "C>T", "T>A", "T>C", "T>G"),
                            each=16))
@@ -191,7 +194,9 @@ mut_colours <- c(RColorBrewer::brewer.pal(10, 'Paired')[seq(1,10,2)], 'grey70')
 plot_comp_distn(mut_example_multi, cat_names=trinuc_context,
                   grouping=group_factor, col=mut_colours,
                   col_nonsig="grey80", show_group_labels=TRUE)
+```
 
+```{r extractmulti, fig.width=8, fig.height=5, fig.keep="all"}
 plot_dp_comp_exposure(mut_example_multi, main_text="Lung adenocarcinoma",
                       dpindices=4+(1:100), 
                       col=RColorBrewer::brewer.pal(12, "Set3"),

@@ -1,0 +1,82 @@
+---
+title: "20240711_hdp_tree"
+format: html
+editor: visual
+---
+
+# 
+
+```{r}
+library(readr)
+```
+
+## Load data
+
+```{r}
+cnsignatures_input_filtered_cin_quant <- read_csv("~/Documents/Research_too_large/2024-Beerenwinkel/data/TumorProfilerData/cnsignatures_input_filtered_cin_quant.csv")
+```
+
+## Initialise hdpState object via hdp_init and friends
+
+Use `hdp_init()` to initialise a custom HDP structure by specifying a number of starting nodes, their parent relationships, the parameters (pseudocounts) of the base distribution, and a set of hyperparameters for the gamma priors over one or more concentration parameters.
+
+In this example, we initialise a HDP with one 'top' DP node off the base distribution, and two children DP nodes off that parent. The two child DPs share a different concentration parameter to that of the parent (hyperparameters for both concentration parameters are rate=2, shape=0.5). The parent DP node draws from the 'base distribution', defined as a uniform Dirichlet with pseudocount 1 in each data category.
+
+```{r hdpinit}
+my_hdp <- hdp_init(ppindex=c(0, 1, 1), 
+                   cpindex=c(1, 2, 2), 
+                   hh=rep(1, 6), 
+                   alphaa=rep(2, 2), 
+                   alphab=rep(0.5, 2))
+my_hdp
+
+```
+
+Further DP nodes can be added to the structure via `hdp_adddp()`, and further concentration parameters can be added via `hdp_addconparam()`.
+
+Next, we add two more concentration parameters, and ten further DP nodes (five children per parent).
+
+```{r add}
+my_hdp <- hdp_addconparam(my_hdp, 
+                          alphaa=rep(2, 2), 
+                          alphab=rep(0.5, 2))
+my_hdp <- hdp_adddp(my_hdp, 
+                    numdp=10, 
+                    ppindex=rep(2:3, each=5), 
+                    cpindex=rep(3:4, each=5))
+my_hdp
+```
+
+Data is assigned via `hdp_setdata()`, with one row of data assigned to each of the DP nodes specified.
+
+```{r setdata}
+my_hdp <- hdp_setdata(my_hdp,
+                      dpindex=4:13,
+                      data=example_data_hdp)
+my_hdp
+```
+
+```{r}
+# Install igraph package if not already installed
+if (!requireNamespace("igraph", quietly = TRUE)) {
+  install.packages("igraph")
+}
+
+# Load the igraph package
+library(igraph)
+
+# Your parent vector
+parent_vector <- c(0, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3)
+
+# Create edge list
+edges <- c()
+for (i in 2:length(parent_vector)) {
+  edges <- c(edges, parent_vector[i], i)
+}
+
+# Create the graph from the edge list
+g <- graph(edges, directed = TRUE)
+
+# Plot the graph
+plot(g, vertex.label = V(g)$name, main = "Tree Structure from Parent Vector")
+```

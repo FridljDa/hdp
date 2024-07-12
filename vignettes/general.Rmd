@@ -88,6 +88,11 @@ data items, while the second DP node has 103 (first sample), the third has 129 (
 With the default settings, the number of initial clusters is 2, and the hyperparameters
 for the concentration parameter are both 1.
 
+```{r}
+rowSums(example_data_hdp)
+```
+
+
 Note that initialising clusters is random, and so the seed is reported for reproducibility. 
 *However*, `hdp_quick_init()` does not let the user set a seed, so for reproducible results the seed can be set
 before running `hdp_quick_init()` *or* the HDP can be defined manually (see below) and the seed set via `dp_activate()`. 
@@ -215,7 +220,6 @@ my_hdp <- hdp_init(ppindex=c(0, 1, 1),
 my_hdp
 
 ```
-
 
 Further DP nodes can be added to the structure via `hdp_adddp()`, and further
 concentration parameters can be added via `hdp_addconparam()`. 
