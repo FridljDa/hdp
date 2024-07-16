@@ -1,0 +1,96 @@
+---
+title: "Tree_rep"
+format: html
+editor: visual
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+```{r}
+library(ape)
+devtools::load_all()
+```
+
+
+```{r}
+tree_sam_1 <- rtree(5)
+plot(tree_sam_1)
+```
+
+```{r}
+ed_mat <- tree_sam_1$edge
+#add column to ed_mat
+# Assuming ed_mat is a matrix representing edges in a tree from the object tree_sam_1
+# To add a new column to ed_mat, you can use cbind() if you want to add a specific column
+# For example, adding a column of ones to ed_mat
+
+ed_mat <- cbind(ed_mat, rep("a", nrow(ed_mat)))
+
+# Now ed_mat has an additional column of ones
+ed_mat
+```
+
+```{r}
+p_mat <- edge_matrix_to_parent_array(ed_mat)
+p_mat
+```
+```{r}
+paste0("[",paste(p_mat, collapse = ", "),"]")
+```
+```{r}
+# Original parent array representation
+var <- c(7, 7, 8, 8, 5, -1, 5, 6, 6)
+
+# Step 1: Create a list of children for each node to easily traverse the tree
+children <- vector("list", length(var))
+for (i in 1:length(var)) {
+  parent <- var[i]
+  if (parent != -1) {  # Skip the root node
+    # Adjust for R's 1-based indexing
+    if (is.null(children[[parent + 1]])) {
+      children[[parent + 1]] <- c(i - 1)  # Store original 0-based index
+    } else {
+      children[[parent + 1]] <- c(children[[parent + 1]], i - 1)
+    }
+  }
+}
+
+# Step 2: BFS to create a mapping from old indices to new indices
+old_to_new <- list()
+new_to_old <- list()
+queue <- list(which(var == -1) - 1)  # Start with the root node, adjust for 0-based indexing
+new_index <- 0
+
+while (length(queue) > 0) {
+  old_index <- queue[[1]]
+  queue <- queue[-1]  # Remove the first element
+  old_to_new[[as.character(old_index)]] <- new_index
+  new_to_old[[as.character(new_index)]] <- old_index
+  new_index <- new_index + 1
+  if (!is.null(children[[old_index + 1]])) {
+    for (child in children[[old_index + 1]]) {
+      queue <- c(queue, list(child))
+    }
+  }
+}
+
+# Step 3: Create a new parent array using the mapping
+new_var <- sapply(var, function(parent) {
+  if (parent == -1) {
+    return(-1)
+  } else {
+    return(old_to_new[[as.character(parent)]])
+  }
+})
+
+new_var
+
+# Order the new_var array
+new_var_ordered <- sort(new_var)
+new_var_ordered
+```
+

@@ -4,79 +4,101 @@ format: html
 editor: visual
 ---
 
-# 
-
 ```{r}
 library(readr)
+library(ape)
+devtools::load_all()
 ```
 
 ## Load data
 
 ```{r}
-cnsignatures_input_filtered_cin_quant <- read_csv("~/Documents/Research_too_large/2024-Beerenwinkel/data/TumorProfilerData/cnsignatures_input_filtered_cin_quant.csv")
-```
-
-## Initialise hdpState object via hdp_init and friends
-
-Use `hdp_init()` to initialise a custom HDP structure by specifying a number of starting nodes, their parent relationships, the parameters (pseudocounts) of the base distribution, and a set of hyperparameters for the gamma priors over one or more concentration parameters.
-
-In this example, we initialise a HDP with one 'top' DP node off the base distribution, and two children DP nodes off that parent. The two child DPs share a different concentration parameter to that of the parent (hyperparameters for both concentration parameters are rate=2, shape=0.5). The parent DP node draws from the 'base distribution', defined as a uniform Dirichlet with pseudocount 1 in each data category.
-
-```{r hdpinit}
-my_hdp <- hdp_init(ppindex=c(0, 1, 1), 
-                   cpindex=c(1, 2, 2), 
-                   hh=rep(1, 6), 
-                   alphaa=rep(2, 2), 
-                   alphab=rep(0.5, 2))
-my_hdp
-
-```
-
-Further DP nodes can be added to the structure via `hdp_adddp()`, and further concentration parameters can be added via `hdp_addconparam()`.
-
-Next, we add two more concentration parameters, and ten further DP nodes (five children per parent).
-
-```{r add}
-my_hdp <- hdp_addconparam(my_hdp, 
-                          alphaa=rep(2, 2), 
-                          alphab=rep(0.5, 2))
-my_hdp <- hdp_adddp(my_hdp, 
-                    numdp=10, 
-                    ppindex=rep(2:3, each=5), 
-                    cpindex=rep(3:4, each=5))
-my_hdp
-```
-
-Data is assigned via `hdp_setdata()`, with one row of data assigned to each of the DP nodes specified.
-
-```{r setdata}
-my_hdp <- hdp_setdata(my_hdp,
-                      dpindex=4:13,
-                      data=example_data_hdp)
-my_hdp
+#tree <- read.tree('/Users/dfridljand/Documents/Research_too_large/2024-Beerenwinkel/data/WholeExome/CRC09_cancer_50nanFilter.cellphy.newick')
 ```
 
 ```{r}
-# Install igraph package if not already installed
-if (!requireNamespace("igraph", quietly = TRUE)) {
-  install.packages("igraph")
-}
+# Print a summary of the tree
+#summary(tree)
 
-# Load the igraph package
-library(igraph)
+# Plot the tree
+#plot(tree)
+```
 
-# Your parent vector
-parent_vector <- c(0, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3)
+```{r}
+#read csv file '/Users/dfridljand/Documents/Research_too_large/2024-Beerenwinkel/data/WholeExome/vcf_tricl_mut_counts.csv'
+#vcf_tricl_mut_counts <- read_csv('/Users/dfridljand/Documents/Research_too_large/2024-Beerenwinkel/data/WholeExome/vcf_tricl_mut_counts.csv')
+```
 
-# Create edge list
-edges <- c()
-for (i in 2:length(parent_vector)) {
-  edges <- c(edges, parent_vector[i], i)
-}
+```{r}
+cnsignatures_input_filtered_cin_quant <- read_csv("~/Documents/Research_too_large/2024-Beerenwinkel/data/TumorProfilerData/cnsignatures_input_filtered_cin_quant.csv")
 
-# Create the graph from the edge list
-g <- graph(edges, directed = TRUE)
+cnsignatures_input_filtered_cin_quant[1:5, 1:5]
+```
 
-# Plot the graph
-plot(g, vertex.label = V(g)$name, main = "Tree Structure from Parent Vector")
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(tidyr)
+
+# Assuming cnsignatures_input_filtered_cin_quant is your dataframe
+# Split the 'sample' column into 'sample_tumor' and 'sample_node'
+cnsignatures_input_filtered_cin_quant <- cnsignatures_input_filtered_cin_quant %>%
+  separate(sample, into = c("sample_tumor", "sample_node"), sep = "_", remove = FALSE) %>%
+  mutate(sample_tumor = as.factor(sample_tumor))
+
+cnsignatures_input_filtered_cin_quant_sample_tumor <- cnsignatures_input_filtered_cin_quant$sample_tumor
+cnsignatures_input_filtered_cin_quant_sample_node <- cnsignatures_input_filtered_cin_quant$sample_node
+
+#Drop them
+cnsignatures_input_filtered_cin_quant <- cnsignatures_input_filtered_cin_quant %>%
+  select(-sample_tumor, -sample_node)
+
+# Set row names using the "sample" column
+rownames(cnsignatures_input_filtered_cin_quant) <- cnsignatures_input_filtered_cin_quant$sample
+
+# Remove the "sample" column
+cnsignatures_input_filtered_cin_quant$sample <- NULL
+
+# Print the updated dataframe
+print(cnsignatures_input_filtered_cin_quant)
+```
+
+```{r}
+sample_tumors_unique <- unique(cnsignatures_input_filtered_cin_quant_sample_tumor)
+n_sample_tumors_unique <- length(sample_tumors_unique)
+
+```
+
+```{r}
+sample_tumor_int <- as.integer(cnsignatures_input_filtered_cin_quant_sample_tumor)
+
+ppindex <-  c(0, rep(1, n_sample_tumors_unique), sample_tumor_int)
+ppindex
+```
+
+```{r inithdp}
+# initialise HDP
+hdp_mut <- hdp_init(ppindex = ppindex, # index of parental nodes
+                    cpindex = 1 + ppindex, # index of concentration param
+                    hh=rep(1, ncol(cnsignatures_input_filtered_cin_quant)), # prior is uniform over the 96 mutation categories
+                    alphaa=rep(1, 1+ max(ppindex)), # shape hyperparams for five different CPs
+                    alphab=rep(1, 1+ max(ppindex))) # rate hyperparams for five different CPs
+
+
+plot_tree(hdp_mut)
+```
+
+```{r}
+dpindex = (2+n_sample_tumors_unique):numdp(hdp_mut)
+cnsignatures_input_filtered_cin_quant <- as.data.frame(cnsignatures_input_filtered_cin_quant)
+# add data to leaf nodes (one per cancer sample, in row order of mut_count)
+hdp_mut <- hdp_setdata(hdp_mut, 
+                       dpindex = dpindex, # index of nodes to add data to
+                       data = cnsignatures_input_filtered_cin_quant) # input data (mutation counts, sample rows match up with specified dpindex)
+```
+
+```{r}
+
+
+hdp_mut
 ```

@@ -1,0 +1,132 @@
+---
+title: "20240711_hdp_tree"
+format: html
+editor: visual
+---
+
+```{r}
+library(readr)
+library(ape)
+# Load necessary libraries
+library(dplyr)
+library(tidyr)
+
+# Load the required library
+library(tibble)
+devtools::load_all()
+```
+
+## Load data
+
+```{r}
+tree <- ape::read.tree('/Users/dfridljand/Documents/Research_too_large/2024-Beerenwinkel/data/WholeExome/CRC09_cancer_50nanFilter.cellphy.newick')
+```
+
+```{r}
+# Print a summary of the tree
+summary(tree)
+
+# Plot the tree
+plot(tree)
+```
+
+```{r}
+# Read the CSV file
+vcf_tricl_mut_counts <- read_csv('/Users/dfridljand/Documents/Research_too_large/2024-Beerenwinkel/data/WholeExome/vcf_tricl_mut_counts.csv')
+vcf_tricl_mut_counts <- vcf_tricl_mut_counts %>%
+  select(-c("...1"))
+# Convert the first column to row names
+vcf_tricl_mut_counts <- column_to_rownames(vcf_tricl_mut_counts, var = 'Cell')
+
+# Convert the data frame to a matrix
+#vcf_tricl_mut_counts_matrix <- as.matrix(vcf_tricl_mut_counts)
+
+# View the matrix
+#head(vcf_tricl_mut_counts_matrix)
+```
+
+# Construct bulk hdp
+
+```{r}
+ppindex <-  c(0, rep(1, nrow(vcf_tricl_mut_counts)))
+cpindex <- 1 + ppindex
+ppindex
+```
+
+```{r inithdp}
+# initialise HDP
+hdp_mut_bulk <- hdp_init(ppindex = ppindex, # index of parental nodes
+                    cpindex = cpindex, # index of concentration param
+                    hh=rep(1, ncol(vcf_tricl_mut_counts)), # prior is uniform over the 96 mutation categories
+                    alphaa=rep(1, 1+ max(ppindex)), # shape hyperparams for five different CPs
+                    alphab=rep(1, 1+ max(ppindex))) # rate hyperparams for five different CPs
+
+
+plot_tree(hdp_mut_bulk)
+```
+
+```{r}
+dpindex = (2):numdp(hdp_mut_bulk)
+#cnsignatures_input_filtered_cin_quant <- as.data.frame(cnsignatures_input_filtered_cin_quant)
+# add data to leaf nodes (one per cancer sample, in row order of mut_count)
+hdp_mut_bulk <- hdp_setdata(hdp_mut_bulk, 
+                       dpindex = dpindex, # index of nodes to add data to
+                       data = vcf_tricl_mut_counts) # input data (mutation counts, sample rows match up with specified dpindex)
+```
+
+```{r}
+hdp_mut_bulk
+```
+
+# Construct tree hdp
+
+```{r}
+hdp_mut_tree <- create_hdp_tree(tree,
+                                vcf_tricl_mut_counts)
+```
+
+```{r}
+plot_tree(hdp_mut_tree)
+```
+
+## Run sampler
+
+```{r, eval = FALSE, cache=TRUE}
+ chlist_bulk <- vector("list", 4)
+ for (i in 1:4){
+ 
+#   # activate DPs, 10 initial components
+   hdp_activated_bulk <- dp_activate(hdp_mut_bulk, 1:numdp(hdp_mut_bulk), initcc=10, seed=i*200)
+# 
+   chlist_bulk[[i]] <- hdp_posterior(hdp_activated_bulk,
+                                burnin=5000,
+                                n=50,
+                                space=200,
+                                cpiter=3,
+                                seed=i*1e3)
+ }
+# 
+# # example multi object
+ mut_example_multi_bulk <- hdp_multi_chain(chlist_bulk)
+```
+
+```{r, eval = FALSE, cache = TRUE}
+ chlist_tree <- vector("list", 4)
+ for (i in 1:4){
+ 
+#   # activate DPs, 10 initial components
+   hdp_activated_tree <- dp_activate(hdp_mut_tree, seq_len(numdp(hdp_mut_tree)), initcc=10, seed=i*200)
+# 
+   chlist_tree[[i]] <- hdp_posterior(hdp_activated_tree,
+                                burnin=5000,
+                                n=50,
+                                space=200,
+                                cpiter=3,
+                                seed=i*1e3)
+ }
+# 
+# # example multi object
+ mut_example_multi_tree <- hdp_multi_chain(chlist_tree)
+```
+
+# Sample

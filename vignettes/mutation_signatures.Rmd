@@ -46,6 +46,7 @@ are tallied across 100 lung cancers, 100 ovarian cancers, and 100 melanomas.
 
 ```{r loaddata}
 library(hdp)
+
 # library(GenomicRanges)
 # 
 # # Lung adenocarcinoma
