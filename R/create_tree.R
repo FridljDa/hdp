@@ -129,10 +129,11 @@ create_hdp_tree <- function(ape_tree, tricl_mut_counts){
 
   ppindex <- edge_matrix_to_parent_array(ape_tree_edges_df)
 
-  cpindex <- 1 + ppindex #TODO
+  #cpindex <- 1 + ppindex #TODO
+  cpindex <- c(1, rep(2, length(ppindex)-1)) #TODO
   hh <- rep(1, ncol(tricl_mut_counts)) #TODO
-  alphaa <- rep(1, 1 + max(ppindex)) #TODO
-  alphab <- rep(1, 1 + max(ppindex)) #TODO
+  alphaa <- rep(1, 2)#1 + max(ppindex)) #TODO
+  alphab <- rep(1, 2)#1 + max(ppindex)) #TODO
 
   hdp_mut_tree <- hdp_init(ppindex = ppindex, # index of parental nodes
                            cpindex = cpindex, # index of concentration param

@@ -19,22 +19,41 @@ devtools::load_all()
 ## Load data
 
 ```{r}
-tree <- ape::read.tree('/Users/dfridljand/Documents/Research_too_large/2024-Beerenwinkel/data/WholeExome/CRC09_cancer_50nanFilter.cellphy.newick')
+tree <- ape::read.tree('/Users/dfridljand/Documents/Research_too_large/2024-Beerenwinkel/data/WholeExome/pooled_trees_and_cells/pooled_tree.newick')
 ```
 
 ```{r}
 # Print a summary of the tree
 summary(tree)
+```
+
+```{r tree_figure}
+# Open a PNG device
+png(filename = "../figures/tree.png", width = 800, height = 800)
 
 # Plot the tree
 plot(tree)
+
+# Close the device
+dev.off()
+
+plot(tree)
+#How to save it to "tree.png"?
+```
+
+```{r}
+list.files()
+```
+
+```{r}
+#savePlot(filename = "figures/tree.png", device = plot(tree))
 ```
 
 ```{r}
 # Read the CSV file
-vcf_tricl_mut_counts <- read_csv('/Users/dfridljand/Documents/Research_too_large/2024-Beerenwinkel/data/WholeExome/vcf_tricl_mut_counts.csv')
-vcf_tricl_mut_counts <- vcf_tricl_mut_counts %>%
-  select(-c("...1"))
+vcf_tricl_mut_counts <- read_csv('/Users/dfridljand/Documents/Research_too_large/2024-Beerenwinkel/data/WholeExome/pooled_trees_and_cells/pooled_cells.csv')
+#vcf_tricl_mut_counts <- vcf_tricl_mut_counts %>%
+#  select(-c("...1"))
 # Convert the first column to row names
 vcf_tricl_mut_counts <- column_to_rownames(vcf_tricl_mut_counts, var = 'Cell')
 
@@ -43,6 +62,12 @@ vcf_tricl_mut_counts <- column_to_rownames(vcf_tricl_mut_counts, var = 'Cell')
 
 # View the matrix
 #head(vcf_tricl_mut_counts_matrix)
+```
+
+```{r}
+#remove columns "cellfilters" "subset"      "dataset" from vcf_tricl_mut_counts
+vcf_tricl_mut_counts <- vcf_tricl_mut_counts %>%
+  select(-c("cellfilters", "subset", "dataset"))
 ```
 
 # Construct bulk hdp
@@ -108,6 +133,12 @@ plot_tree(hdp_mut_tree)
 # 
 # # example multi object
  mut_example_multi_bulk <- hdp_multi_chain(chlist_bulk)
+ #save mut_example_multi_bulk
+ saveRDS(mut_example_multi_bulk, '../data/20240722_mut_example_multi_bulk.Rds')
+```
+
+```{r, eval = TRUE}
+mut_example_multi_bulk <- readRDS('../data/20240722_mut_example_multi_bulk.Rds')
 ```
 
 ```{r, eval = FALSE, cache = TRUE}
@@ -126,10 +157,15 @@ plot_tree(hdp_mut_tree)
  }
 # 
 # # example multi object
- mut_example_multi_tree <- hdp_multi_chain(chlist_tree)
+mut_example_multi_tree <- hdp_multi_chain(chlist_tree)
+saveRDS(mut_example_multi_tree, '../data/20240722_mut_example_multi_tree.Rds')
 ```
 
 ```{r}
+mut_example_multi_tree <- readRDS('../data/20240722_mut_example_multi_tree.Rds')
+```
+
+```{r, eval = FALSE}
 cat(" Number of data items in data:",
                 sum(vcf_tricl_mut_counts), "\n")
 cat(" Number of data items in bulk:",
@@ -138,21 +174,30 @@ cat(" Number of data items in bulk:",
 cat(" Number of data items in tree:",
                 sum(sapply(hdp_activated_tree@dp,
                        function(x) x@numdata)), "\n")
-
+#TODO sanity check
 ```
 
 # Analyse
 
 ## Bulk
 
-```{r}
+```{r, cache=TRUE}
 mut_example_multi_bulk <- hdp_extract_components(mut_example_multi_bulk)
 mut_example_multi_bulk
 ```
 
 ```{r}
+# Open a PNG device
+#png(filename = "../figures/plot_comp_size_mut_example_multi_bulk.png", width = 800, height = 800)
 par(mfrow=c(1,1), mar=c(5, 4, 4, 2))
+# Plot the tree
 plot_comp_size(mut_example_multi_bulk, bty="L", incl_nonsig = TRUE)
+
+# Close the device
+#dev.off()
+
+# Plot the tree
+#plot_comp_size(mut_example_multi_bulk, bty="L", incl_nonsig = TRUE)
 ```
 
 ```{r}
@@ -175,7 +220,7 @@ plot_comp_distn(mut_example_multi_bulk,
 
 ## Tree
 
-```{r}
+```{r, cache =TRUE}
 mut_example_multi_tree <- hdp_extract_components(mut_example_multi_tree)
 mut_example_multi_tree
 ```
