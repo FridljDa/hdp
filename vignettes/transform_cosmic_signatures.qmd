@@ -1,0 +1,123 @@
+---
+title: "Convert_cosmic_signatures"
+format: html
+editor: visual
+---
+
+## 
+```{r}
+library(dplyr)
+library(purrr)
+```
+
+
+```{r}
+cosmic.sigs <- read.table('http://cancer.sanger.ac.uk/cancergenome/assets/signatures_probabilities.txt', header=TRUE, sep='\t')
+#  sort by Substitution Type and Trinucleotide
+cosmic.sigs <- cosmic.sigs[order(cosmic.sigs$Substitution.Type, cosmic.sigs$Trinucleotide),]
+prior_sigs <- as.matrix(cosmic.sigs[,grep('Signature', colnames(cosmic.sigs))])
+# number of prior signatures to condition on (30)
+nps <- ncol(prior_sigs)
+nps
+```
+
+```{r}
+head(cosmic.sigs)
+```
+
+```{r}
+cosmic.sigs <- cosmic.sigs %>%
+  select(-c(X, X.1, X.2, X.3, X.4, X.5, X.6))
+```
+
+```{r}
+convert_notation2 <- function(Substitution.Type, Trinucleotide){
+  #"T.G.in.GTA"
+  # Extract relevant characters
+  new_notation <- paste0(substr(Substitution.Type, 1, 1),
+                         ".",
+                         substr(Substitution.Type, 3, 3),
+                         ".in.",
+                         Trinucleotide)
+}
+```
+
+```{r}
+convert_notation <- function(mutation_channel) {
+    # Extract relevant characters
+    new_notation <- paste0(substr(mutation_channel, 1, 1), 
+                           substr(mutation_channel, 3, 3), 
+                           substr(mutation_channel, 7, 7), 
+                           "->", 
+                           substr(mutation_channel, 1, 1), 
+                           substr(mutation_channel, 5, 5), 
+                           substr(mutation_channel, 7, 7))
+    return(new_notation)
+}
+```
+
+# Convert notation 1
+```{r}
+cosmic.sigs.conv <- cosmic.sigs %>%
+  mutate(Somatic.Mutation.Type.Conv = sapply(Somatic.Mutation.Type, convert_notation)) %>%
+  select(-c(Somatic.Mutation.Type, Substitution.Type, Trinucleotide))
+```
+
+```{r}
+#Somatic.Mutation.Type.Convc to rownames
+rownames(cosmic.sigs.conv) <- cosmic.sigs.conv$Somatic.Mutation.Type.Conv
+cosmic.sigs.conv$Somatic.Mutation.Type.Conv <- NULL
+```
+
+```{r}
+# transpose cosmic.sigs.conv. Somatic.Mutation.Type.Conv should become the column name. The current column names should become rownames
+cosmic.sigs.conv_t <- t(cosmic.sigs.conv)
+rownames(cosmic.sigs.conv_t) <- paste0("Cosmic.NMF.", rownames(cosmic.sigs.conv_t))
+```
+
+```{r}
+cosmic.sigs.conv_t <- as.data.frame(cosmic.sigs.conv_t)
+```
+
+```{r}
+cosmic.sigs.conv_t[1:5, 1:5]
+```
+
+```{r}
+#save cosmic.sigs.conv_t to file
+write.csv(cosmic.sigs.conv_t, '../data/cosmic_nmf_signature.csv')
+```
+
+# Convert notation 2
+
+```{r}
+cosmic.sigs.conv2 <- cosmic.sigs %>%
+  mutate(Somatic.Mutation.Type.Conv = map2_chr(Substitution.Type, Trinucleotide, convert_notation2)) %>%
+  select(-c(Somatic.Mutation.Type, Substitution.Type, Trinucleotide))
+```
+
+```{r}
+#Somatic.Mutation.Type.Convc to rownames
+rownames(cosmic.sigs.conv2) <- cosmic.sigs.conv2$Somatic.Mutation.Type.Conv
+cosmic.sigs.conv2$Somatic.Mutation.Type.Conv <- NULL
+```
+
+```{r}
+# transpose cosmic.sigs.conv2. Somatic.Mutation.Type.Conv should become the column name. The current column names should become rownames
+cosmic.sigs.conv2_t <- t(cosmic.sigs.conv2)
+rownames(cosmic.sigs.conv2_t) <- paste0("Cosmic.NMF.", rownames(cosmic.sigs.conv2_t))
+```
+
+```{r}
+cosmic.sigs.conv2_t <- as.data.frame(cosmic.sigs.conv2_t)
+```
+
+```{r}
+cosmic.sigs.conv2_t[1:5, 1:5]
+```
+
+
+```{r}
+#save cosmic.sigs.conv_t to file
+write.csv(cosmic.sigs.conv2_t, '../data/cosmic_nmf_signature2.csv')
+```

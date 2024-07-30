@@ -7,8 +7,11 @@ output:
     toc: true
 vignette: >
   %\VignetteIndexEntry{HDP for mutational signatures analysis}
-  %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
 
 ```{r style, echo = FALSE, results = 'asis'}
@@ -17,32 +20,37 @@ BiocStyle::markdown()
 knitr::opts_chunk$set(fig.width=6, fig.height=5)
 ```
 
+```{r}
+library(dplyr)
+```
+
 For the background to this document, see the other package vignette
 "General introduction to the hdp package."
 
-One specific application of the HDP is the analysis of somatic mutation data from
-cancer genome sequencing projects. In this setting, the input data consists of
-counts of mutation categories across a number of cancer samples. The HDP model
-returns a set of components representing the underlying mutational processes with
-their characteristic distributions or 'signatures' over the set of possible
-mutation classes.
+One specific application of the HDP is the analysis of somatic mutation
+data from cancer genome sequencing projects. In this setting, the input
+data consists of counts of mutation categories across a number of cancer
+samples. The HDP model returns a set of components representing the
+underlying mutational processes with their characteristic distributions
+or 'signatures' over the set of possible mutation classes.
 
-The ability to define hierarchies of sample-relatedness (via the tree of parent 
-DP nodes in a customised HDP structure) allows mutational signatures to be
-inferred both across and within groups of patients, and groups of mutations 
-within patients. Patient groups could be defined by cancer type or driver mutation
-status, while mutation groups *within* a patient could be defined by temporal or
-regional information, subclone status, phylogenetic branch, etc. 
-
+The ability to define hierarchies of sample-relatedness (via the tree of
+parent DP nodes in a customised HDP structure) allows mutational
+signatures to be inferred both across and within groups of patients, and
+groups of mutations within patients. Patient groups could be defined by
+cancer type or driver mutation status, while mutation groups *within* a
+patient could be defined by temporal or regional information, subclone
+status, phylogenetic branch, etc.
 
 # Example: de novo signature extraction in lung, ovarian, and skin cancers
 
 ## Tally somatic mutation categories
 
-The `r Biocexptpkg("SomaticCancerAlterations")` package contains several somatic alteration
-datasets for different cancer types (exome only). In this example, the number of somatic base
-substitution mutations in each of the 96 categories defined by local trinucleotide context
-are tallied across 100 lung cancers, 100 ovarian cancers, and 100 melanomas.  
+The `r Biocexptpkg("SomaticCancerAlterations")` package contains several
+somatic alteration datasets for different cancer types (exome only). In
+this example, the number of somatic base substitution mutations in each
+of the 96 categories defined by local trinucleotide context are tallied
+across 100 lung cancers, 100 ovarian cancers, and 100 melanomas.
 
 ```{r loaddata}
 library(hdp)
@@ -82,26 +90,28 @@ tail(mut_count[,1:5])
 table(sapply(strsplit(row.names(mut_count), '_'), `[`, 1))
 ```
 
-
 ## Initialise HDP structure
 
 In this example, the HDP is structured to have
 
-* one top grandparent DP drawing from the base distribution (ppindex 0) with 
-its own concentration parameter (cpindex 1),
-* three parent DPs (one per cancer type) drawing from the grandparent distribution 
-(ppindex 1) and sharing a new concentration parameter (cpindex 2),
-* 100 child DPs (one per lung cancer sample) drawing from the first parent (ppindex 2)
-and sharing a new concentration parameter (cpindex 3),
-* 100 child DPs (one per ovarian cancer sample) drawing from the second parent (ppindex 3)
-and sharing a new concentration parameter (cpindex 4), and
-* 100 child DPs (one per melanoma sample) drawing from the third parent (index 4)
-and sharing a new concentration parameter (cpindex 5).
+-   one top grandparent DP drawing from the base distribution (ppindex
+    0)  with its own concentration parameter (cpindex 1),
+-   three parent DPs (one per cancer type) drawing from the grandparent
+    distribution (ppindex 1) and sharing a new concentration parameter
+    (cpindex 2),
+-   100 child DPs (one per lung cancer sample) drawing from the first
+    parent (ppindex 2) and sharing a new concentration parameter
+    (cpindex 3),
+-   100 child DPs (one per ovarian cancer sample) drawing from the
+    second parent (ppindex 3) and sharing a new concentration parameter
+    (cpindex 4), and
+-   100 child DPs (one per melanoma sample) drawing from the third
+    parent (index 4) and sharing a new concentration parameter (cpindex
+    5).
 
-The base distribution is a uniform Dirichlet with pseudocount 1 in each of the 96
-possible mutation categories. Each concentration parameter is drawn from a gamma prior
-with hyperparameters rate=1, shape=1. 
-
+The base distribution is a uniform Dirichlet with pseudocount 1 in each
+of the 96 possible mutation categories. Each concentration parameter is
+drawn from a gamma prior with hyperparameters rate=1, shape=1.
 
 ```{r inithdp}
 # initialise HDP
@@ -122,12 +132,14 @@ hdp_mut
 
 ## Run multiple posterior sampling chains
 
-For this example, I ran four independent posterior sampling chains, each separately initialised with
-10 random starting clusters, followed by 5000 burn-in iterations,
-and the collection of 50 posterior samples off each chain with 200 iterations between each. 
-For real-world analyses on larger datasets, be sure to check the diagnostic plots and
-adjust the burn-in and space parameters accordingly, usually collecting at least
-1000 posterior samples (overall) from *at least* 4 independent sampling chains. 
+For this example, I ran four independent posterior sampling chains, each
+separately initialised with 10 random starting clusters, followed by
+5000 burn-in iterations, and the collection of 50 posterior samples off
+each chain with 200 iterations between each. For real-world analyses on
+larger datasets, be sure to check the diagnostic plots and adjust the
+burn-in and space parameters accordingly, usually collecting at least
+1000 posterior samples (overall) from *at least* 4 independent sampling
+chains.
 
 ```{r postsamp}
 # Run four independent posterior sampling chains
@@ -157,24 +169,28 @@ p2 <- lapply(chains(mut_example_multi), plot_numcluster, bty="L")
 p3 <- lapply(chains(mut_example_multi), plot_data_assigned, bty="L")
 ```
 
-Always remember to check that the diagnostic plots show no strong trends over the 
-posterior samples collected! 
+Always remember to check that the diagnostic plots show no strong trends
+over the posterior samples collected!
 
 ## Extract components (mutational signatures)
 
 The extracted components represent the underlying mutational processes
-giving rise to the observed catalogues of somatic mutation. Several processes
-are recognisable from [COSMIC](http://cancer.sanger.ac.uk/cosmic/signatures), 
-for example (1) is the UV radiation signature dominant in melanomas, (2) is the tobacco
-signature dominant in lung cancers, etc.  
+giving rise to the observed catalogues of somatic mutation. Several
+processes are recognisable from
+[COSMIC](http://cancer.sanger.ac.uk/cosmic/signatures), for example (1)
+is the UV radiation signature dominant in melanomas, (2) is the tobacco
+signature dominant in lung cancers, etc.
 
-The `plot_dp_comp_exposure()` function plots the estimated proportion of mutations 
-within each sample derived from each signature. Note that by setting `incl_nonsig=FALSE`, 
-only those signatures with non-zero 95% credibility intervals for exposure in a 
-sample are included. As a result, a fraction of the sample's signature 
-exposure is left unexplained, as we can't have confidence that the other signatures 
-truly contribute to that sample. 
+The `plot_dp_comp_exposure()` function plots the estimated proportion of
+mutations within each sample derived from each signature. Note that by
+setting `incl_nonsig=FALSE`, only those signatures with non-zero 95%
+credibility intervals for exposure in a sample are included. As a
+result, a fraction of the sample's signature exposure is left
+unexplained, as we can't have confidence that the other signatures truly
+contribute to that sample.
+
 ```{r}
+mut_example_multi_copy <- mut_example_multi
 mut_example_multi <- hdp_extract_components(mut_example_multi)
 mut_example_multi
 ```
@@ -227,28 +243,28 @@ plot_dp_comp_exposure(mut_example_multi,
                       ylab_exp = 'Signature exposure', leg.title = 'Signature')
 ```
 
-
 # Example: matching lung cancers to a prior signature library, while simultaneously discovering new signatures
 
 ## Initialise HDP structure
 
-Use `hdp_prior_init` to condition on previously identified signatures 
-(e.g. from COSMIC database), as previously introducted in the other package vignette. 
+Use `hdp_prior_init` to condition on previously identified signatures
+(e.g. from COSMIC database), as previously introducted in the other
+package vignette.
 
-Here, I use 30 previously defined mutational signatures (available from COSMIC website)
-to define the known set of priors, with a weighting of 1000 pseudocounts on each one. 
-In practice, it may be advisable to put lower weights on prior signatures that you
-do not expect to be present in your dataset, or even exclude some priors entirely 
-(for example, there may be no need to include the UV radiation signature for cancers
-of internal organs). 
+Here, I use 30 previously defined mutational signatures (available from
+COSMIC website) to define the known set of priors, with a weighting of
+1000 pseudocounts on each one. In practice, it may be advisable to put
+lower weights on prior signatures that you do not expect to be present
+in your dataset, or even exclude some priors entirely (for example,
+there may be no need to include the UV radiation signature for cancers
+of internal organs).
 
-After `hdp_prior_init`, I use `hdp_addconparam` to provide additional concentration
-parameters for the new dataset, and `hdp_adddp` to set up the node structure 
-for the dataset of 100 lung cancer samples, connected to their group-specific 
-parent node (itself connected to the overall grandparent node).
-The data is added via `hdp_setdata`, here using the first 100 rows of `mut_count`
-to select the lung samples from Example 1. 
-
+After `hdp_prior_init`, I use `hdp_addconparam` to provide additional
+concentration parameters for the new dataset, and `hdp_adddp` to set up
+the node structure for the dataset of 100 lung cancer samples, connected
+to their group-specific parent node (itself connected to the overall
+grandparent node). The data is added via `hdp_setdata`, here using the
+first 100 rows of `mut_count` to select the lung samples from Example 1.
 
 ```{r setupprior}
 cosmic.sigs <- read.table('http://cancer.sanger.ac.uk/cancergenome/assets/signatures_probabilities.txt', header=TRUE, sep='\t')
@@ -284,12 +300,13 @@ luad_prior
 
 ## Run multiple posterior sampling chains
 
-Activate the DP nodes added via `hdp_adddp` (don't activate the frozen pseudo-count
-nodes for the prior signatures), and then run posterior sampling as usual. 
-I recommend using `initcc` (number of initialising clusters) slightly higher than
-the number of prior signatures passed in. In this way, the model initialises with
-the data spread over all provided priors plus over a few extra clusters solely comprised
-of new data observations (un-connected to the priors). 
+Activate the DP nodes added via `hdp_adddp` (don't activate the frozen
+pseudo-count nodes for the prior signatures), and then run posterior
+sampling as usual. I recommend using `initcc` (number of initialising
+clusters) slightly higher than the number of prior signatures passed in.
+In this way, the model initialises with the data spread over all
+provided priors plus over a few extra clusters solely comprised of new
+data observations (un-connected to the priors).
 
 ```{r sampleprior}
 # takes about 15 minutes to run - load pre-made version
@@ -317,18 +334,16 @@ p2 <- lapply(chains(luad_multi), plot_numcluster, bty='L')
 p3 <- lapply(chains(luad_multi), plot_data_assigned, bty='L')
 ```
 
-
 ## Extract components (mutational signatures)
 
-When extracting components on a HDP model with prior information, 
-the components matching the provided priors (down to a cosine similarity of 0.9) 
-are labelled **P**, with the numbers reflecting the order in which the priors were provided,
-and any novel components are labelled **N**. 
+When extracting components on a HDP model with prior information, the
+components matching the provided priors (down to a cosine similarity of
+0.9) are labelled **P**, with the numbers reflecting the order in which
+the priors were provided, and any novel components are labelled **N**.
 
-In this example, the lung cancer dataset is matched to prior signatures 4, 5, 1, 
-2, 13, 15, and 17, with one additional signature returned that was not provided in
-the prior set (N1). 
-
+In this example, the lung cancer dataset is matched to prior signatures
+4, 5, 1, 2, 13, 15, and 17, with one additional signature returned that
+was not provided in the prior set (N1).
 
 ```{r prior, fig.width=8, fig.height=5}
 luad_multi <- hdp_extract_components(luad_multi)
@@ -350,6 +365,35 @@ plot_dp_comp_exposure(luad_multi, 1+nps+1+(1:100), incl_nonsig = F,
 
 ```
 
+# Cosine similarity to Cosmic signatures
+
+```{r}
+source('../R/Daniel_experimental.R') #TODO
+#'../data/cosmic_nmf_signature.csv'
+cosmic_sigs <- read.csv('../data/cosmic_nmf_signature2.csv', row.names=1)
+
+signatures_hdp <- extract_signature_matrix(mut_example_multi, plot_bars = TRUE)
+colnames(signatures_hdp) <- colnames(mut_count)
+rownames(signatures_hdp) <- paste0("Signature.HDP", 1:nrow(signatures_hdp))
+
+signatures_hdp <- as.data.frame(signatures_hdp)
+```
+
+```{r}
+source('../R/Daniel_experimental.R') 
+all_signatures <- dplyr::bind_rows(cosmic_sigs, signatures_hdp)
+
+plot_cosine_sim(all_signatures, filename = "../figures/heatmap_cosinesim_signature_roberts_cosmic_nmf_hdp.png")
+```
+
+# Cosine similarity between chains as convergence criterium
+
+```{r, cache = TRUE}
+source('../R/Daniel_experimental.R') #TODO
+signatures_hdp_chains <- extract_signature_matrix_chains(mut_example_multi)
+
+plot_cosine_sim(signatures_hdp_chains, filename = "../figures/heatmap_cosinesim_signature_roberts_hdp_chains.png")
+```
 
 # Session info
 
